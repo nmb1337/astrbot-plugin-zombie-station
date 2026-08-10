@@ -1,0 +1,8 @@
+{
+  "daily_stamina": {
+    "description": "每日体力",
+    "type": "int",
+    "default": 10,
+    "hint": "主持人执行“驿站 新一天”后，所有已入局玩家恢复到这个值。每开一个包裹消耗 1 点。"
+  }
+}

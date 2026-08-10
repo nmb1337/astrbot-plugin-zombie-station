@@ -1,0 +1,35 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>末日快递驿站</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">ZOMBIE SURVIVAL · GROUP DASHBOARD</p>
+          <h1 id="heading">末日快递驿站</h1>
+          <p>仅文字卡牌 · 1200 包裹不放回 · 抽空自动开新局</p>
+        </div>
+        <button id="refresh" type="button">刷新统计</button>
+      </header>
+      <section class="import-panel">
+        <div>
+          <h2>导入卡牌表</h2>
+          <p>上传 UTF-8 CSV 或 XLSX。必须恰好 1200 张有效卡牌，列名使用“名称/标题”和“内容/描述/效果”。导入会清空所有群局。</p>
+        </div>
+        <div class="import-actions">
+          <input id="file" type="file" accept=".csv,.xlsx" />
+          <button id="import" type="button">导入并重置群局</button>
+        </div>
+      </section>
+      <p id="notice" role="status"></p>
+      <section id="overview" class="cards"></section>
+      <section id="groups" class="groups"></section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
