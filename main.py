@@ -12,7 +12,7 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api.web import PluginUploadFile, error_response, json_response, request
 from astrbot.core.utils.astrbot_path import get_astrbot_plugin_data_path
 
-from .game import DECK_SIZE, GameError, ParcelGame, initial_state
+from .game import GameError, ParcelGame, initial_state
 
 PLUGIN_NAME = "astrbot_plugin_zombie_station"
 STATE_KEY = "zombie_station_state"
@@ -38,8 +38,8 @@ class ZombieStationPlugin(Star):
         state = await self.get_kv_data(STATE_KEY, None)
         if not isinstance(state, dict) or not isinstance(state.get("cards"), list):
             return initial_state()
-        if len(state["cards"]) != DECK_SIZE:
-            logger.warning("驿站卡池数量不是 1200，已恢复内置占位卡池。")
+        if not state["cards"]:
+            logger.warning("驿站卡池为空，已恢复内置占位卡池。")
             return initial_state()
         state.setdefault("groups", {})
         return state
@@ -81,6 +81,7 @@ class ZombieStationPlugin(Star):
         async with self.lock:
             state = await self._load_state()
             self.game = ParcelGame(self._daily_stamina())
+            deck_size = len(state["cards"])
             try:
                 result = self.game.draw(state, self._group_id(event), event.get_sender_id(), self._sender_name(event), amount)
             except GameError as exc:
@@ -89,9 +90,9 @@ class ZombieStationPlugin(Star):
             await self._save_state(state)
         lines = [f"【快递驿站｜第 {result.round_number} 局｜第 {result.day} 天】"]
         lines.extend(f"{index}. {card['title']}\n{card['text']}" for index, card in enumerate(result.cards, start=1))
-        lines.append(f"体力剩余：{result.stamina_left}｜本局包裹剩余：{result.remaining}/{DECK_SIZE}")
+        lines.append(f"体力剩余：{result.stamina_left}｜本局包裹剩余：{result.remaining}/{deck_size}")
         if result.completed_round:
-            lines.append(f"第 {result.completed_round} 局的 1200 个包裹已全部抽光；第 {result.completed_round + 1} 局已自动重置。")
+            lines.append(f"第 {result.completed_round} 局的 {deck_size} 个包裹已全部抽光；第 {result.completed_round + 1} 局已自动重置。")
         yield event.plain_result("\n".join(lines))
 
     @station.command("新一天")
@@ -141,7 +142,7 @@ class ZombieStationPlugin(Star):
             f"你的体力：{player['stamina']}/{player.get('daily_stamina', self._daily_stamina())}｜"
             f"今日已开：{player['opened_today']}｜累计：{player['total_opened']}"
         )
-        yield event.plain_result(f"【快递驿站】第 {group['round']} 局，第 {group['day']} 天\n主持人：{group['host_name']}｜包裹剩余：{len(group['deck'])}/{DECK_SIZE}\n{personal}")
+        yield event.plain_result(f"【快递驿站】第 {group['round']} 局，第 {group['day']} 天\n主持人：{group['host_name']}｜包裹剩余：{len(group['deck'])}/{snapshot['deck_size']}\n{personal}")
 
     @station.command("帮助")
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
@@ -203,7 +204,7 @@ class ZombieStationPlugin(Star):
             f"{player['name']} {player['total_opened']}包/日上限{player.get('daily_stamina', self._daily_stamina())}"
             for player in group["players"][:5]
         ) or "暂无玩家"
-        yield event.plain_result(f"【快递驿站管理】卡池：{snapshot['cards_source']}\n第 {group['round']} 局｜第 {group['day']} 天｜剩余 {group['remaining']}/{DECK_SIZE}\n玩家 {group['player_count']} 人｜累计开包排行：{rankings}")
+        yield event.plain_result(f"【快递驿站管理】卡池：{snapshot['cards_source']}\n第 {group['round']} 局｜第 {group['day']} 天｜剩余 {group['remaining']}/{snapshot['deck_size']}\n玩家 {group['player_count']} 人｜累计开包排行：{rankings}")
 
     async def web_stats(self):
         async with self.lock:
@@ -263,8 +264,8 @@ class ZombieStationPlugin(Star):
             cards = self._read_cards(target)
         except (OSError, UnicodeError, ValueError) as exc:
             return error_response(f"无法读取卡牌表：{exc}", status_code=400)
-        if len(cards) != DECK_SIZE:
-            return error_response(f"卡牌表必须恰好包含 {DECK_SIZE} 张有效卡牌，当前为 {len(cards)} 张。", status_code=400)
+        if not cards:
+            return error_response("卡牌表至少需要包含一张有效卡牌。", status_code=400)
 
         async with self.lock:
             state = await self._load_state()

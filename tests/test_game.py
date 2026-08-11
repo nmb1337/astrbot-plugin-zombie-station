@@ -1,4 +1,4 @@
-﻿import random
+import random
 import sys
 import unittest
 from pathlib import Path
@@ -56,6 +56,19 @@ class ParcelGameTests(unittest.TestCase):
         self.assertEqual(self.state["groups"]["group"]["round"], 2)
         self.assertEqual(len(self.state["groups"]["group"]["deck"]), DECK_SIZE)
 
+    def test_custom_size_deck_resets_to_its_imported_size(self):
+        self.state["cards"] = self.state["cards"][:3]
+        self.state["groups"] = {}
+        self.game.start(self.state, "group", "host", "主持人")
+
+        result = self.game.draw(self.state, "group", "player", "玩家", 3)
+
+        self.assertEqual(result.remaining, 0)
+        self.assertEqual(result.completed_round, 1)
+        self.assertEqual(len(self.state["groups"]["group"]["deck"]), 3)
+        snapshot = self.game.snapshot(self.state, "group")
+        self.assertEqual(snapshot["deck_size"], 3)
+        self.assertEqual(snapshot["groups"][0]["drawn"], 0)
 
 if __name__ == "__main__":
     unittest.main()

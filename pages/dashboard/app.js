@@ -1,4 +1,4 @@
-﻿const bridge = window.AstrBotPluginPage;
+const bridge = window.AstrBotPluginPage;
 const heading = document.getElementById("heading");
 const notice = document.getElementById("notice");
 const overview = document.getElementById("overview");
@@ -126,7 +126,7 @@ async function importCards() {
   const file = document.getElementById("file").files[0];
   if (!file) return setNotice("请先选择 CSV 或 XLSX 卡牌表。", true);
   if (!window.confirm("导入会清空全部群局，确定继续吗？")) return;
-  setNotice("正在上传并校验 1200 张卡牌…");
+  setNotice("正在上传并校验卡牌表…");
   try {
     const result = await bridge.upload("cards/import", file);
     setNotice(`已导入 ${result.imported} 张卡牌，所有群局已清空。`);

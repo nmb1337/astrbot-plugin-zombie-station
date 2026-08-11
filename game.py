@@ -28,7 +28,7 @@ def built_in_cards() -> list[dict[str, str]]:
         {
             "id": f"P-{number:04d}",
             "title": f"未登记包裹 {number:04d}",
-            "text": "请在 WebUI 导入你的 1200 行卡牌表后开始正式副本。",
+            "text": "请在 WebUI 导入你的卡牌表后开始正式副本。",
         }
         for number in range(1, DECK_SIZE + 1)
     ]
@@ -46,13 +46,15 @@ class ParcelGame:
         self.rng = rng or random.SystemRandom()
 
     @staticmethod
-    def _new_group(host_id: str, host_name: str, round_number: int = 1) -> dict[str, Any]:
+    def _new_group(host_id: str, host_name: str, deck_size: int, round_number: int = 1) -> dict[str, Any]:
+        if deck_size < 1:
+            raise GameError("卡池为空，请先在 WebUI 导入至少一张卡牌。")
         return {
             "host_id": host_id,
             "host_name": host_name,
             "round": round_number,
             "day": 1,
-            "deck": list(range(DECK_SIZE)),
+            "deck": list(range(deck_size)),
             "players": {},
             "stamina_limits": {},
             "history": [],
@@ -61,7 +63,7 @@ class ParcelGame:
     def start(self, state: dict[str, Any], group_id: str, host_id: str, host_name: str) -> dict[str, Any]:
         if group_id in state["groups"]:
             raise GameError("本群已有进行中的驿站副本。")
-        state["groups"][group_id] = self._new_group(host_id, host_name)
+        state["groups"][group_id] = self._new_group(host_id, host_name, len(state["cards"]))
         return state["groups"][group_id]
 
     @staticmethod
@@ -117,7 +119,9 @@ class ParcelGame:
         completed_round = None
         if remaining == 0:
             completed_round = round_number
-            state["groups"][group_id] = self._new_group(group["host_id"], group["host_name"], round_number + 1)
+            state["groups"][group_id] = self._new_group(
+                group["host_id"], group["host_name"], len(state["cards"]), round_number + 1
+            )
         return DrawResult(cards, player["stamina"], remaining, round_number, day, completed_round)
 
     def next_day(self, state: dict[str, Any], group_id: str, operator_id: str) -> dict[str, Any]:
@@ -167,7 +171,7 @@ class ParcelGame:
     def reset(self, state: dict[str, Any], group_id: str, host_id: str, host_name: str) -> dict[str, Any]:
         previous = state["groups"].get(group_id)
         round_number = previous["round"] + 1 if previous else 1
-        state["groups"][group_id] = self._new_group(host_id, host_name, round_number)
+        state["groups"][group_id] = self._new_group(host_id, host_name, len(state["cards"]), round_number)
         return state["groups"][group_id]
 
     def snapshot(self, state: dict[str, Any], group_id: str | None = None) -> dict[str, Any]:
@@ -197,14 +201,14 @@ class ParcelGame:
                     "round": group["round"],
                     "day": group["day"],
                     "remaining": len(group["deck"]),
-                    "drawn": DECK_SIZE - len(group["deck"]),
+                    "drawn": len(state["cards"]) - len(group["deck"]),
                     "player_count": len(players),
                     "players": players,
                     "history": group["history"],
                 }
             )
         return {
-            "deck_size": DECK_SIZE,
+            "deck_size": len(state["cards"]),
             "cards_source": state.get("cards_source", "未知"),
             "groups": sorted(groups, key=lambda group: group["group_id"]),
         }
