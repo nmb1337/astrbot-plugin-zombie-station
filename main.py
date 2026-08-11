@@ -295,8 +295,15 @@ class ZombieStationPlugin(Star):
         cards = []
         for row_number, row in enumerate(rows, start=2):
             normalized = {str(key).strip().lower(): str(value or "").strip() for key, value in row.items()}
-            title = next((normalized.get(key, "") for key in ("名称", "标题", "卡牌", "name", "title") if normalized.get(key)), "")
-            text = next((normalized.get(key, "") for key in ("内容", "描述", "效果", "text", "description") if normalized.get(key)), "")
+            title = next((normalized.get(key, "") for key in ("名称", "标题", "卡牌", "物品名称", "name", "title") if normalized.get(key)), "")
+            text = next((normalized.get(key, "") for key in ("内容", "描述", "效果", "附加文本", "text", "description") if normalized.get(key)), "")
+            details = [
+                f"{label}：{normalized[key]}"
+                for label, key in (("快递编号", "快递编号"), ("发件地", "发件地"), ("收件人", "收件人"), ("物品类型", "物品类型"))
+                if normalized.get(key)
+            ]
+            if details:
+                text = "｜".join(details + ([text] if text else []))
             if not title and not text:
                 continue
             cards.append({"id": f"P-{len(cards) + 1:04d}", "title": title or f"包裹 {row_number - 1:04d}", "text": text})
