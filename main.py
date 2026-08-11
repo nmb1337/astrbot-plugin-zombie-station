@@ -245,9 +245,11 @@ class ZombieStationPlugin(Star):
         )
 
     async def web_import_cards(self):
+        await request.form()
         files = await request.files()
         upload = files.get("file")
         if not isinstance(upload, PluginUploadFile):
+            logger.warning("驿站卡牌表导入请求缺少 file 字段。")
             return error_response("请选择一个 CSV 或 XLSX 文件。", status_code=400)
         filename = upload.filename or ""
         suffix = Path(filename).suffix.lower()
@@ -259,12 +261,14 @@ class ZombieStationPlugin(Star):
         import_dir = Path(get_astrbot_plugin_data_path()) / PLUGIN_NAME / "imports"
         import_dir.mkdir(parents=True, exist_ok=True)
         target = import_dir / f"cards{suffix}"
-        await upload.save(target)
         try:
+            await upload.save(target)
             cards = self._read_cards(target)
-        except (OSError, UnicodeError, ValueError) as exc:
-            return error_response(f"无法读取卡牌表：{exc}", status_code=400)
+        except Exception as exc:
+            logger.exception("驿站卡牌表导入失败：%s", filename)
+            return error_response(f"无法导入卡牌表：{type(exc).__name__}: {exc}", status_code=400)
         if not cards:
+            logger.warning("驿站卡牌表导入为空：%s", filename)
             return error_response("卡牌表至少需要包含一张有效卡牌。", status_code=400)
 
         async with self.lock:
@@ -273,6 +277,7 @@ class ZombieStationPlugin(Star):
             state["cards_source"] = Path(filename).name
             state["groups"] = {}
             await self._save_state(state)
+        logger.info("驿站卡牌表导入成功：%s，共 %d 张。", Path(filename).name, len(cards))
         return json_response({"imported": len(cards), "source": Path(filename).name, "cleared_groups": True})
 
     @staticmethod

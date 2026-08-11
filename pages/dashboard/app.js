@@ -132,7 +132,7 @@ async function importCards() {
     setNotice(`已导入 ${result.imported} 张卡牌，所有群局已清空。`);
     await loadStats();
   } catch (error) {
-    setNotice(`导入失败：${error.message}`, true);
+    console.error("Card table import failed:", error);
   }
 }
 

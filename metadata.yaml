@@ -1,7 +1,7 @@
 name: astrbot_plugin_zombie_station
 display_name: 末日快递驿站
 desc: QQ 群丧尸末日开包副本，任意数量包裹不放回抽取，附带统计 Pages。
-version: 0.1.0
+version: 0.1.1
 author: local
 support_platforms:
   - aiocqhttp
