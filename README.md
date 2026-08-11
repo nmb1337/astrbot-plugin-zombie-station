@@ -37,6 +37,6 @@ AstrBot `aiocqhttp`（NapCat / OneBot v11）QQ群插件。副本按群独立存�
 
 ## WebUI
 
-`pages/dashboard/` 是 AstrBot Plugin Pages：页面显示卡池来源、进行中群局、每局剩余包数和所有玩家的累计/当日开包数及体力。它只通过 AstrBot 注入的 `window.AstrBotPluginPage` Bridge 调用插件本地接口，不使用图片或外部前端依赖。
+`pages/dashboard/` 是 AstrBot Plugin Pages：页面显示卡池来源、进行中群局、每局剩余包数和所有玩家的累计/当日开包数及体力。可直接调整已入局玩家的每日体力，或输入 QQ 号提前录入体力上限。它只通过 AstrBot 注入的 `window.AstrBotPluginPage` Bridge 调用插件本地接口，不使用图片或外部前端依赖。
 
 请仅向可信的 AstrBot Dashboard 管理者开放 WebUI；导入接口会替换全局卡池。

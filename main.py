@@ -27,6 +27,9 @@ class ZombieStationPlugin(Star):
         self.game = ParcelGame(self._daily_stamina())
         context.register_web_api(f"/{PLUGIN_NAME}/stats", self.web_stats, ["GET"], "驿站统计")
         context.register_web_api(f"/{PLUGIN_NAME}/cards/import", self.web_import_cards, ["POST"], "导入卡牌表")
+        context.register_web_api(
+            f"/{PLUGIN_NAME}/players/stamina", self.web_set_player_stamina, ["POST"], "设置玩家每日体力"
+        )
 
     def _daily_stamina(self) -> int:
         return max(1, int(self.config.get("daily_stamina", 10)))
@@ -207,6 +210,38 @@ class ZombieStationPlugin(Star):
             state = await self._load_state()
             snapshot = self.game.snapshot(state)
         return json_response(snapshot)
+
+    async def web_set_player_stamina(self):
+        payload = await request.json(default={})
+        if not isinstance(payload, dict):
+            return error_response("请求内容必须是 JSON 对象。", status_code=400)
+        group_id = str(payload.get("group_id") or "").strip()
+        player_id = str(payload.get("player_id") or "").strip()
+        try:
+            daily_stamina = int(payload.get("daily_stamina"))
+        except (TypeError, ValueError):
+            return error_response("每日体力必须是整数。", status_code=400)
+        if not group_id or not player_id:
+            return error_response("群号和玩家 QQ 号不能为空。", status_code=400)
+
+        async with self.lock:
+            state = await self._load_state()
+            self.game = ParcelGame(self._daily_stamina())
+            try:
+                player = self.game.set_player_stamina(
+                    state, group_id, "dashboard", player_id, daily_stamina, force=True
+                )
+            except GameError as exc:
+                return error_response(str(exc), status_code=400)
+            await self._save_state(state)
+        return json_response(
+            {
+                "group_id": group_id,
+                "player_id": player_id,
+                "daily_stamina": player["daily_stamina"],
+                "stamina": player["stamina"],
+            }
+        )
 
     async def web_import_cards(self):
         files = await request.files()

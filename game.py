@@ -180,6 +180,7 @@ class ParcelGame:
                 (
                     {
                         **player,
+                        "player_id": player_id,
                         "daily_stamina": limits.get(
                             player_id, player.get("daily_stamina", self.daily_stamina)
                         ),
