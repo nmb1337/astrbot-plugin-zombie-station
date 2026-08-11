@@ -32,6 +32,22 @@ class ParcelGameTests(unittest.TestCase):
         self.assertEqual(group["day"], 2)
         self.assertEqual(group["players"]["player"]["stamina"], 10)
 
+    def test_host_sets_individual_daily_stamina(self):
+        self.game.set_player_stamina(self.state, "group", "host", "small", 6)
+        self.game.set_player_stamina(self.state, "group", "host", "large", 14)
+        self.game.draw(self.state, "group", "small", "小体型", 4)
+        self.game.draw(self.state, "group", "large", "大体型", 10)
+
+        group = self.game.next_day(self.state, "group", "host")
+        self.assertEqual(group["players"]["small"]["daily_stamina"], 6)
+        self.assertEqual(group["players"]["small"]["stamina"], 6)
+        self.assertEqual(group["players"]["large"]["daily_stamina"], 14)
+        self.assertEqual(group["players"]["large"]["stamina"], 14)
+
+    def test_non_host_cannot_set_daily_stamina(self):
+        with self.assertRaises(GameError):
+            self.game.set_player_stamina(self.state, "group", "other", "player", 8)
+
     def test_empty_deck_starts_next_round(self):
         self.state["groups"]["group"]["deck"] = [0]
         result = self.game.draw(self.state, "group", "player", "玩家", 1)

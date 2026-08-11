@@ -1,4 +1,4 @@
-﻿const bridge = window.AstrBotPluginPage;
+const bridge = window.AstrBotPluginPage;
 const heading = document.getElementById("heading");
 const notice = document.getElementById("notice");
 const overview = document.getElementById("overview");
@@ -33,7 +33,7 @@ function renderGroup(group, deckSize) {
   bar.append(fill);
   const ranking = element("ol", "ranking");
   for (const player of group.players) {
-    ranking.append(element("li", "", `${player.name}：累计 ${player.total_opened} 包｜体力 ${player.stamina}｜今日 ${player.opened_today}`));
+    ranking.append(element("li", "", `${player.name}：累计 ${player.total_opened} 包｜体力 ${player.stamina}/${player.daily_stamina ?? "默认"}｜今日 ${player.opened_today}`));
   }
   if (!group.players.length) ranking.append(element("li", "", "尚无人开包"));
   card.append(title, details, bar, ranking);

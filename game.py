@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import random
 from dataclasses import dataclass
@@ -54,6 +54,7 @@ class ParcelGame:
             "day": 1,
             "deck": list(range(DECK_SIZE)),
             "players": {},
+            "stamina_limits": {},
             "history": [],
         }
 
@@ -74,10 +75,18 @@ class ParcelGame:
         if not 1 <= amount <= MAX_DRAW_PER_COMMAND:
             raise GameError(f"每次只能开 1 到 {MAX_DRAW_PER_COMMAND} 个包裹。")
         group = self.get_group(state, group_id)
+        stamina_limit = group.setdefault("stamina_limits", {}).get(player_id, self.daily_stamina)
         player = group["players"].setdefault(
             player_id,
-            {"name": player_name, "stamina": self.daily_stamina, "opened_today": 0, "total_opened": 0},
+            {
+                "name": player_name,
+                "daily_stamina": stamina_limit,
+                "stamina": stamina_limit,
+                "opened_today": 0,
+                "total_opened": 0,
+            },
         )
+        player.setdefault("daily_stamina", stamina_limit)
         player["name"] = player_name or player["name"]
         if player["stamina"] < 1:
             raise GameError("你的体力已耗尽，请等待主持人更新到新的一天。")
@@ -116,10 +125,44 @@ class ParcelGame:
         if group["host_id"] != operator_id:
             raise GameError("只有本局主持人可以更新到新的一天。")
         group["day"] += 1
-        for player in group["players"].values():
-            player["stamina"] = self.daily_stamina
+        for player_id, player in group["players"].items():
+            stamina_limit = group.setdefault("stamina_limits", {}).get(
+                player_id, player.get("daily_stamina", self.daily_stamina)
+            )
+            player["daily_stamina"] = stamina_limit
+            player["stamina"] = stamina_limit
             player["opened_today"] = 0
         return group
+
+    def set_player_stamina(
+        self,
+        state: dict[str, Any],
+        group_id: str,
+        operator_id: str,
+        player_id: str,
+        daily_stamina: int,
+        force: bool = False,
+    ) -> dict[str, Any]:
+        if daily_stamina < 1:
+            raise GameError("每日体力必须至少为 1。")
+        group = self.get_group(state, group_id)
+        if not force and group["host_id"] != operator_id:
+            raise GameError("只有本局主持人可以设置玩家体力。")
+        group.setdefault("stamina_limits", {})[player_id] = daily_stamina
+        player = group["players"].setdefault(
+            player_id,
+            {
+                "name": player_id,
+                "daily_stamina": daily_stamina,
+                "stamina": daily_stamina,
+                "opened_today": 0,
+                "total_opened": 0,
+            },
+        )
+        player["daily_stamina"] = daily_stamina
+        player["stamina"] = daily_stamina
+        player["opened_today"] = 0
+        return player
 
     def reset(self, state: dict[str, Any], group_id: str, host_id: str, host_name: str) -> dict[str, Any]:
         previous = state["groups"].get(group_id)
@@ -127,13 +170,25 @@ class ParcelGame:
         state["groups"][group_id] = self._new_group(host_id, host_name, round_number)
         return state["groups"][group_id]
 
-    @staticmethod
-    def snapshot(state: dict[str, Any], group_id: str | None = None) -> dict[str, Any]:
+    def snapshot(self, state: dict[str, Any], group_id: str | None = None) -> dict[str, Any]:
         groups = []
         for current_group_id, group in state["groups"].items():
             if group_id and current_group_id != group_id:
                 continue
-            players = sorted(group["players"].values(), key=lambda player: player["total_opened"], reverse=True)
+            limits = group.get("stamina_limits", {})
+            players = sorted(
+                (
+                    {
+                        **player,
+                        "daily_stamina": limits.get(
+                            player_id, player.get("daily_stamina", self.daily_stamina)
+                        ),
+                    }
+                    for player_id, player in group["players"].items()
+                ),
+                key=lambda player: player["total_opened"],
+                reverse=True,
+            )
             groups.append(
                 {
                     "group_id": current_group_id,

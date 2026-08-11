@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import csv
@@ -103,7 +103,25 @@ class ZombieStationPlugin(Star):
                 yield event.plain_result(f"【快递驿站】{exc}")
                 return
             await self._save_state(state)
-        yield event.plain_result(f"【快递驿站】第 {group['round']} 局进入第 {group['day']} 天；所有已入局玩家体力恢复至 {self._daily_stamina()}。")
+        yield event.plain_result(f"【快递驿站】第 {group['round']} 局进入第 {group['day']} 天；所有已入局玩家体力均恢复到各自的每日上限。")
+
+    @station.command("设体力")
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def set_player_stamina(self, event: AstrMessageEvent, player_id: str, daily_stamina: int):
+        async with self.lock:
+            state = await self._load_state()
+            self.game = ParcelGame(self._daily_stamina())
+            try:
+                player = self.game.set_player_stamina(
+                    state, self._group_id(event), event.get_sender_id(), player_id, daily_stamina
+                )
+            except GameError as exc:
+                yield event.plain_result(f"【快递驿站】{exc}")
+                return
+            await self._save_state(state)
+        yield event.plain_result(
+            f"【快递驿站】已将玩家 {player_id} 的每日体力设为 {player['daily_stamina']}；当前体力已同步为该数值。"
+        )
 
     @station.command("状态")
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
@@ -116,7 +134,10 @@ class ZombieStationPlugin(Star):
                 yield event.plain_result(f"【快递驿站】{exc}")
                 return
             player = group["players"].get(event.get_sender_id())
-        personal = "你尚未开过包。" if player is None else f"你的体力：{player['stamina']}｜今日已开：{player['opened_today']}｜累计：{player['total_opened']}"
+        personal = "你尚未开过包。" if player is None else (
+            f"你的体力：{player['stamina']}/{player.get('daily_stamina', self._daily_stamina())}｜"
+            f"今日已开：{player['opened_today']}｜累计：{player['total_opened']}"
+        )
         yield event.plain_result(f"【快递驿站】第 {group['round']} 局，第 {group['day']} 天\n主持人：{group['host_name']}｜包裹剩余：{len(group['deck'])}/{DECK_SIZE}\n{personal}")
 
     @station.command("帮助")
@@ -126,9 +147,11 @@ class ZombieStationPlugin(Star):
             "【快递驿站指令】\n"
             "驿站 开局：创建副本，发起者成为主持人。\n"
             "驿站 开包 [1-10]：消耗等量体力开包；省略数量时开 10 个。\n"
-            "驿站 新一天：仅主持人可用，刷新全员每日体力。\n"
+            "驿站 新一天：仅主持人可用，按每名玩家的每日上限恢复体力。\n"
+            "驿站 设体力 <QQ号> <数值>：仅主持人可用，设置该玩家每日体力。\n"
             "驿站 状态：查看本局进度与自己的体力。\n"
             "驿站 管理重置：AstrBot 管理员强制开下一局。\n"
+            "驿站 管理设体力 <QQ号> <数值>：AstrBot 管理员强制设置玩家每日体力。\n"
             "驿站 管理状态：AstrBot 管理员查看本群汇总。"
         )
 
@@ -143,6 +166,25 @@ class ZombieStationPlugin(Star):
             await self._save_state(state)
         yield event.plain_result(f"【快递驿站】管理员已重置为第 {group['round']} 局，第 1 天。")
 
+    @station.command("管理设体力")
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    async def admin_set_player_stamina(self, event: AstrMessageEvent, player_id: str, daily_stamina: int):
+        async with self.lock:
+            state = await self._load_state()
+            self.game = ParcelGame(self._daily_stamina())
+            try:
+                player = self.game.set_player_stamina(
+                    state, self._group_id(event), event.get_sender_id(), player_id, daily_stamina, force=True
+                )
+            except GameError as exc:
+                yield event.plain_result(f"【快递驿站】{exc}")
+                return
+            await self._save_state(state)
+        yield event.plain_result(
+            f"【快递驿站】管理员已将玩家 {player_id} 的每日体力设为 {player['daily_stamina']}。"
+        )
+
     @station.command("管理状态")
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
@@ -154,7 +196,10 @@ class ZombieStationPlugin(Star):
             yield event.plain_result("【快递驿站】本群尚未开局。")
             return
         group = snapshot["groups"][0]
-        rankings = "、".join(f"{player['name']} {player['total_opened']}包" for player in group["players"][:5]) or "暂无玩家"
+        rankings = "、".join(
+            f"{player['name']} {player['total_opened']}包/日上限{player.get('daily_stamina', self._daily_stamina())}"
+            for player in group["players"][:5]
+        ) or "暂无玩家"
         yield event.plain_result(f"【快递驿站管理】卡池：{snapshot['cards_source']}\n第 {group['round']} 局｜第 {group['day']} 天｜剩余 {group['remaining']}/{DECK_SIZE}\n玩家 {group['player_count']} 人｜累计开包排行：{rankings}")
 
     async def web_stats(self):
