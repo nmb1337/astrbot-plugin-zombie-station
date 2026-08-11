@@ -15,10 +15,11 @@ from astrbot.core.utils.astrbot_path import get_astrbot_plugin_data_path
 from .game import GameError, ParcelGame, initial_state
 
 PLUGIN_NAME = "astrbot_plugin_zombie_station"
+PLUGIN_VERSION = "0.1.2"
 STATE_KEY = "zombie_station_state"
 
 
-@register(PLUGIN_NAME, "local", "QQ 群末日快递驿站开包副本", "0.1.0")
+@register(PLUGIN_NAME, "local", "QQ 群末日快递驿站开包副本", PLUGIN_VERSION)
 class ZombieStationPlugin(Star):
     def __init__(self, context: Context, config: dict[str, Any]):
         super().__init__(context)
@@ -210,6 +211,7 @@ class ZombieStationPlugin(Star):
         async with self.lock:
             state = await self._load_state()
             snapshot = self.game.snapshot(state)
+        snapshot["plugin_version"] = PLUGIN_VERSION
         return json_response(snapshot)
 
     async def web_set_player_stamina(self):

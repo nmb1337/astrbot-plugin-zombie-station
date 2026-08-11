@@ -100,6 +100,7 @@ function renderGroup(group, deckSize) {
 
 function render(stats) {
   overview.replaceChildren(
+    metric("运行版本", `v${stats.plugin_version || "未知"}`),
     metric("卡池", `${stats.deck_size} 张`),
     metric("卡池来源", stats.cards_source),
     metric("进行中群局", `${stats.groups.length} 个`),
@@ -112,13 +113,17 @@ function render(stats) {
   for (const group of stats.groups) groups.append(renderGroup(group, stats.deck_size));
 }
 
-async function loadStats() {
-  setNotice("正在读取统计…");
+async function loadStats(showNotice = true) {
+  if (showNotice) setNotice("正在读取统计…");
   try {
-    render(await bridge.apiGet("stats"));
-    setNotice("统计已刷新。");
+    const stats = await bridge.apiGet("stats");
+    render(stats);
+    if (showNotice) setNotice("统计已刷新。");
+    return stats;
   } catch (error) {
-    setNotice(`读取失败：${error.message}`, true);
+    const message = error?.message || "未知错误";
+    setNotice(`读取失败：${message}`, true);
+    throw error;
   }
 }
 
@@ -129,10 +134,15 @@ async function importCards() {
   setNotice("正在上传并校验卡牌表…");
   try {
     const result = await bridge.upload("cards/import", file);
-    setNotice(`已导入 ${result.imported} 张卡牌，所有群局已清空。`);
-    await loadStats();
+    const stats = await loadStats(false);
+    if (stats.deck_size !== result.imported || stats.cards_source !== result.source) {
+      throw new Error("上传接口返回成功，但回读卡池与导入结果不一致");
+    }
+    setNotice(`已导入 ${result.imported} 张卡牌，当前卡池来源：${stats.cards_source}。`);
   } catch (error) {
     console.error("Card table import failed:", error);
+    const message = error?.message || "未知错误";
+    setNotice(`导入失败：${message}。请在 AstrBot Trace 中搜索“驿站卡牌表导入”。`, true);
   }
 }
 
