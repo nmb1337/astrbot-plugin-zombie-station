@@ -15,7 +15,7 @@ from astrbot.core.utils.astrbot_path import get_astrbot_plugin_data_path
 from .game import GameError, ParcelGame, initial_state
 
 PLUGIN_NAME = "astrbot_plugin_zombie_station"
-PLUGIN_VERSION = "0.1.2"
+PLUGIN_VERSION = "0.1.3"
 STATE_KEY = "zombie_station_state"
 
 

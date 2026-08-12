@@ -130,7 +130,6 @@ async function loadStats(showNotice = true) {
 async function importCards() {
   const file = document.getElementById("file").files[0];
   if (!file) return setNotice("请先选择 CSV 或 XLSX 卡牌表。", true);
-  if (!window.confirm("导入会清空全部群局，确定继续吗？")) return;
   setNotice("正在上传并校验卡牌表…");
   try {
     const result = await bridge.upload("cards/import", file);
