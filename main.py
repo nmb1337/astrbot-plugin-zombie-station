@@ -15,7 +15,7 @@ from astrbot.core.utils.astrbot_path import get_astrbot_plugin_data_path
 from .game import GameError, ParcelGame, initial_state
 
 PLUGIN_NAME = "astrbot_plugin_zombie_station"
-PLUGIN_VERSION = "0.1.3"
+PLUGIN_VERSION = "0.1.4"
 STATE_KEY = "zombie_station_state"
 
 
@@ -139,11 +139,12 @@ class ZombieStationPlugin(Star):
                 yield event.plain_result(f"【快递驿站】{exc}")
                 return
             player = group["players"].get(event.get_sender_id())
+            deck_size = len(state["cards"])
         personal = "你尚未开过包。" if player is None else (
             f"你的体力：{player['stamina']}/{player.get('daily_stamina', self._daily_stamina())}｜"
             f"今日已开：{player['opened_today']}｜累计：{player['total_opened']}"
         )
-        yield event.plain_result(f"【快递驿站】第 {group['round']} 局，第 {group['day']} 天\n主持人：{group['host_name']}｜包裹剩余：{len(group['deck'])}/{snapshot['deck_size']}\n{personal}")
+        yield event.plain_result(f"【快递驿站】第 {group['round']} 局，第 {group['day']} 天\n主持人：{group['host_name']}｜包裹剩余：{len(group['deck'])}/{deck_size}\n{personal}")
 
     @station.command("帮助")
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
